@@ -4,7 +4,6 @@ import numpy as np
 import time
 import math
 from hand_tracker import HandTracker
-from face_tracker import FaceTracker
 from mouse_controller import MouseController
 from system_controller import SystemController
 from performance_monitor import PerformanceMonitor
@@ -22,7 +21,6 @@ def main():
     cap.set(4, V_HEIGHT)
     
     tracker = HandTracker(max_hands=2, detection_con=0.5)
-    face_tracker = FaceTracker()
     mouse = MouseController(smoothing=7)
     sys_ctrl = SystemController()
     perf_mon = PerformanceMonitor()
@@ -32,7 +30,6 @@ def main():
     draw_mode = False
     prev_draw_x, prev_draw_y = 0, 0
     swipe_cooldown = 0
-    blink_cooldown = 0
     
     # 2-Hand Statics
     initial_dist = 0
@@ -40,7 +37,7 @@ def main():
     zoom_cooldown = 0
     
     p_time = 0
-    print("🚀 AI Virtual Mouse Started - EYE & HAND ELITE MODE!")
+    print("🚀 AI Virtual Mouse Started - HAND ELITE MODE!")
     
     while True:
         success, img = cap.read()
@@ -53,11 +50,6 @@ def main():
         # MediaPipe Video mode requires monotonic timestamps in ms
         timestamp_ms = int(time.time() * 1000)
         img = tracker.find_hands(img, draw=True, timestamp_ms=timestamp_ms)
-        face_tracker.find_face(img, timestamp_ms=timestamp_ms)
-        img = face_tracker.draw_face_info(img)
-        
-        # Get Blink Data
-        left_blink, right_blink = face_tracker.get_blink_status()
         
         # Get data for all detected hands
         hands_data = []
@@ -67,21 +59,6 @@ def main():
                 fingers = tracker.fingers_up(lm_list)
                 hands_data.append({'lm': lm_list, 'fingers': fingers})
 
-        # --- EYE GESTURE LOGIC (CLICKS) ---
-        if blink_cooldown == 0:
-            if left_blink and right_blink:
-                mouse.double_click()
-                blink_cooldown = 15
-                cv2.putText(img, "DOUBLE CLICK", (200, 150), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 3)
-            elif left_blink:
-                mouse.click('left')
-                blink_cooldown = 10
-                cv2.putText(img, "LEFT CLICK", (200, 150), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 3)
-            elif right_blink:
-                mouse.right_click()
-                blink_cooldown = 10
-                cv2.putText(img, "RIGHT CLICK", (200, 150), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 3)
-
         # --- GESTURE LOGIC ---
         
         if len(hands_data) == 1:
@@ -90,6 +67,7 @@ def main():
             lm = data['lm']
             fingers = data['fingers']
             x1, y1 = lm[8][1], lm[8][2] # Index
+            x2, y2 = lm[12][1], lm[12][2] # Middle
             
             # Reset 2-Hand Vars
             initial_dist = 0
@@ -107,7 +85,15 @@ def main():
                     sys_ctrl.app_switcher()
                     swipe_cooldown = 20
 
-            # C. WHITEBOARD TOGGLE: Pinky ONLY
+            # C. VOLUME CONTROL: Thumb + Index
+            elif fingers == [1, 1, 0, 0, 0]:
+                if y1 < 200: # Hand is high
+                   sys_ctrl.volume_step('up')
+                elif y1 > 300: # Hand is low
+                   sys_ctrl.volume_step('down')
+                cv2.putText(img, "VOLUME", (x1, y1), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 255), 3)
+
+            # D. WHITEBOARD TOGGLE: Pinky ONLY
             elif fingers == [0, 0, 0, 0, 1]:
                 if swipe_cooldown == 0:
                     draw_mode = not draw_mode
@@ -125,8 +111,21 @@ def main():
                 if fingers[0] == 1 and fingers[1] == 1 and np.hypot(lm[4][1]-lm[8][1], lm[4][2]-lm[8][2]) < 30:
                      canvas = np.zeros((V_HEIGHT, V_WIDTH, 3), np.uint8)
             else:
-                if fingers[1] == 1: # Index UP moves cursor
+                # 1. Cursor Movement
+                if fingers[1] == 1 and fingers[2] == 0:
                     mouse.move_cursor(x1, y1, V_WIDTH, V_HEIGHT, margin=FRAME_MARGIN)
+                
+                # 2. Left Click (Pinch Index + Middle)
+                elif fingers[1] == 1 and fingers[2] == 1 and np.hypot(x2-x1, y2-y1) < 45:
+                    mouse.click()
+                    cv2.putText(img, "LEFT CLICK", (x1, y1-20), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 3)
+                    time.sleep(0.1)
+                
+                # 3. Right Click (3 Fingers UP)
+                elif fingers[1] == 1 and fingers[2] == 1 and fingers[3] == 1:
+                    mouse.right_click()
+                    cv2.putText(img, "RIGHT CLICK", (x1, y1-20), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 3)
+                    time.sleep(0.1)
 
         elif len(hands_data) == 2:
             # --- TWO HAND GESTURES: ZOOM & ROTATE ---
@@ -170,7 +169,6 @@ def main():
 
         if swipe_cooldown > 0: swipe_cooldown -= 1
         if zoom_cooldown > 0: zoom_cooldown -= 1
-        if blink_cooldown > 0: blink_cooldown -= 1
 
         # Perf
         c_time = time.time()
@@ -181,13 +179,6 @@ def main():
         cv2.putText(img, f"FPS: {int(fps)} | M-HAND: {len(hands_data)}", (10, 25), cv2.FONT_HERSHEY_PLAIN, 1.2, (0, 255, 0), 2)
         cv2.putText(img, f"CPU: {stats['cpu']}% RAM: {stats['memory']}MB", (10, 55), cv2.FONT_HERSHEY_PLAIN, 1.2, (0, 255, 0), 2)
         
-        # --- EYE STATUS ---
-        e_color_l = (0, 255, 0) if left_blink else (255, 255, 255)
-        e_color_r = (0, 255, 0) if right_blink else (255, 255, 255)
-        cv2.putText(img, "EYES:", (V_WIDTH - 150, 30), cv2.FONT_HERSHEY_PLAIN, 1.2, (255, 255, 255), 2)
-        cv2.putText(img, "L", (V_WIDTH - 80, 30), cv2.FONT_HERSHEY_PLAIN, 1.2, e_color_l, 2)
-        cv2.putText(img, "R", (V_WIDTH - 50, 30), cv2.FONT_HERSHEY_PLAIN, 1.2, e_color_r, 2)
-
         # --- FINGER STATUS DISPLAY (T I M R P) ---
         for i, data in enumerate(hands_data):
             fingers = data['fingers']
