@@ -30,6 +30,7 @@ def main():
     draw_mode = False
     prev_draw_x, prev_draw_y = 0, 0
     swipe_cooldown = 0
+    volume_cooldown = 0
     
     # 2-Hand Statics
     initial_dist = 0
@@ -44,7 +45,7 @@ def main():
         if not success or img is None:
             continue
             
-        img = cv2.flip(img, 1) # Mirror
+        img = cv2.flip(img, 1) 
         
         # 1. AI Tracking
         # MediaPipe Video mode requires monotonic timestamps in ms
@@ -75,7 +76,7 @@ def main():
             if fingers == [0, 0, 0, 0, 0]:
                 if swipe_cooldown == 0:
                     sys_ctrl.media_control('play_pause')
-                    swipe_cooldown = 30
+                    swipe_cooldown = 40
                 cv2.putText(img, "PLAY/PAUSE", (lm[9][1], lm[9][2]), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 3)
 
 
@@ -85,11 +86,13 @@ def main():
                     swipe_cooldown = 20
 
             elif fingers == [1, 1, 0, 0, 0]:
-                if y1 < 200: # Hand is high
-                   sys_ctrl.volume_step('up')
-                elif y1 > 300: # Hand is low
-                   sys_ctrl.volume_step('down')
-                cv2.putText(img, "VOLUME", (x1, y1), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 255), 3)
+                if volume_cooldown == 0:
+                    if y1 < 200: # Hand is high
+                       sys_ctrl.volume_step('up')
+                    elif y1 > 300: # Hand is low
+                       sys_ctrl.volume_step('down')
+                    volume_cooldown = 5
+                    cv2.putText(img, "VOLUME", (x1, y1), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 255), 3)
 
 
             elif fingers == [0, 0, 0, 0, 1]:
@@ -164,6 +167,7 @@ def main():
         img = cv2.bitwise_or(img, canvas)
 
         if swipe_cooldown > 0: swipe_cooldown -= 1
+        if volume_cooldown > 0: volume_cooldown -= 1
         if zoom_cooldown > 0: zoom_cooldown -= 1
 
         # Perf

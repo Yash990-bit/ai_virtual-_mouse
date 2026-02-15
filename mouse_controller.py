@@ -21,20 +21,15 @@ class MouseController:
     def move_cursor(self, x, y, frame_w, frame_h, margin=100):
         x_mapped = np.interp(x, (margin, frame_w - margin), (0, self.screen_width))
         y_mapped = np.interp(y, (margin, frame_h - margin), (0, self.screen_height))
+        # Constant Smoothing: Discrete "jumps" in smoothing cause jerky motion.
+        # We use a constant, stable value for all movements.
+        self.cloc_x = self.ploc_x + (x_mapped - self.ploc_x) / self.smoothing
+        self.cloc_y = self.ploc_y + (y_mapped - self.ploc_y) / self.smoothing
         
-
-        dist = np.hypot(x_mapped - self.ploc_x, y_mapped - self.ploc_y)
-        dynamic_smoothing = self.smoothing
-        if dist < 10:
-            dynamic_smoothing = self.smoothing * 1.5 # Extra smooth for fine control
-        elif dist > 100:
-            dynamic_smoothing = max(2, self.smoothing / 2) # Faster for big jumps
-            
-        self.cloc_x = self.ploc_x + (x_mapped - self.ploc_x) / dynamic_smoothing
-        self.cloc_y = self.ploc_y + (y_mapped - self.ploc_y) / dynamic_smoothing
-        
-        pyautogui.moveTo(self.cloc_x, self.cloc_y)
-        self.ploc_x, self.ploc_y = self.cloc_x, self.cloc_y
+        # Deadzone / Stabilization: Only move if the change is meaningful
+        if np.hypot(self.cloc_x - self.ploc_x, self.cloc_y - self.ploc_y) > 0.5:
+            pyautogui.moveTo(self.cloc_x, self.cloc_y)
+            self.ploc_x, self.ploc_y = self.cloc_x, self.cloc_y
 
     def click(self, button='left'):
         pyautogui.click(button=button)
