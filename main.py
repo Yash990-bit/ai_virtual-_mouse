@@ -20,7 +20,7 @@ def main():
     cap.set(3, V_WIDTH)
     cap.set(4, V_HEIGHT)
     
-    tracker = HandTracker(max_hands=2, detection_con=0.5)
+    tracker = HandTracker(max_hands=2, detection_con=0.4)
     mouse = MouseController(smoothing=7)
     sys_ctrl = SystemController()
     perf_mon = PerformanceMonitor()
@@ -59,33 +59,31 @@ def main():
                 fingers = tracker.fingers_up(lm_list)
                 hands_data.append({'lm': lm_list, 'fingers': fingers})
 
-        # --- GESTURE LOGIC ---
+
         
         if len(hands_data) == 1:
-            # --- SINGLE HAND GESTURES ---
+
             data = hands_data[0]
             lm = data['lm']
             fingers = data['fingers']
             x1, y1 = lm[8][1], lm[8][2] # Index
             x2, y2 = lm[12][1], lm[12][2] # Middle
             
-            # Reset 2-Hand Vars
+
             initial_dist = 0
 
-            # A. MEDIA: Fist for PLAY/PAUSE
             if fingers == [0, 0, 0, 0, 0]:
                 if swipe_cooldown == 0:
                     sys_ctrl.media_control('play_pause')
                     swipe_cooldown = 30
                 cv2.putText(img, "PLAY/PAUSE", (lm[9][1], lm[9][2]), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 3)
 
-            # B. APP SWITCHER: Thumb ONLY
+
             elif fingers == [1, 0, 0, 0, 0]:
                 if swipe_cooldown == 0:
                     sys_ctrl.app_switcher()
                     swipe_cooldown = 20
 
-            # C. VOLUME CONTROL: Thumb + Index
             elif fingers == [1, 1, 0, 0, 0]:
                 if y1 < 200: # Hand is high
                    sys_ctrl.volume_step('up')
@@ -93,13 +91,13 @@ def main():
                    sys_ctrl.volume_step('down')
                 cv2.putText(img, "VOLUME", (x1, y1), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 255), 3)
 
-            # D. WHITEBOARD TOGGLE: Pinky ONLY
+
             elif fingers == [0, 0, 0, 0, 1]:
                 if swipe_cooldown == 0:
                     draw_mode = not draw_mode
                     swipe_cooldown = 30
 
-            # D. MOUSE / DRAW
+      
             if draw_mode:
                 if fingers[1] == 1:
                     if prev_draw_x == 0: prev_draw_x, prev_draw_y = x1, y1
