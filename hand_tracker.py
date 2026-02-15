@@ -60,20 +60,22 @@ class HandTracker:
                         cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
         return self.lm_list
 
-    def fingers_up(self):
+    def fingers_up(self, lm_list=None):
         fingers = []
-        if not self.lm_list:
+        target_lm_list = lm_list if lm_list is not None else self.lm_list
+        
+        if not target_lm_list:
             return [0, 0, 0, 0, 0]
             
         # Thumb: Threshold-based check for open thumb
-        if self.lm_list[4][1] > self.lm_list[4-1][1] + 5:
+        if target_lm_list[4][1] > target_lm_list[4-1][1] + 5:
             fingers.append(1)
         else:
             fingers.append(0)
 
         # Fingers: Check tip relative to middle joint
         for id in range(1, 5):
-            if self.lm_list[self.tip_ids[id]][2] < self.lm_list[self.tip_ids[id] - 2][2]:
+            if target_lm_list[self.tip_ids[id]][2] < target_lm_list[self.tip_ids[id] - 2][2]:
                 fingers.append(1)
             else:
                 fingers.append(0)
