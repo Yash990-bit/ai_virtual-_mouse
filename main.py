@@ -19,7 +19,7 @@ def main():
     cap.set(3, V_WIDTH)
     cap.set(4, V_HEIGHT)
     
-    tracker = HandTracker(max_hands=2, detection_con=0.7)
+    tracker = HandTracker(max_hands=2, detection_con=0.5)
     mouse = MouseController(smoothing=7)
     sys_ctrl = SystemController()
     perf_mon = PerformanceMonitor()
@@ -46,7 +46,9 @@ def main():
         img = cv2.flip(img, 1) # Mirror
         
         # 1. AI Tracking
-        img = tracker.find_hands(img, draw=True)
+        # MediaPipe Video mode requires monotonic timestamps in ms
+        timestamp_ms = int(time.time() * 1000)
+        img = tracker.find_hands(img, draw=True, timestamp_ms=timestamp_ms)
         
         # Get data for all detected hands
         hands_data = []

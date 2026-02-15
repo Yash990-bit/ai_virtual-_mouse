@@ -12,16 +12,16 @@ class HandTracker:
             num_hands=max_hands,
             min_hand_detection_confidence=detection_con,
             min_hand_presence_confidence=track_con,
-            running_mode=vision.RunningMode.IMAGE
+            running_mode=vision.RunningMode.VIDEO
         )
         self.detector = vision.HandLandmarker.create_from_options(options)
         self.results = None
         self.lm_list = []
         self.tip_ids = [4, 8, 12, 16, 20]
 
-    def find_hands(self, img, draw=True):
+    def find_hands(self, img, draw=True, timestamp_ms=0):
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img)
-        self.results = self.detector.detect(mp_image)
+        self.results = self.detector.detect_for_video(mp_image, int(timestamp_ms))
 
         if draw and self.results.hand_landmarks:
             for hand_landmarks in self.results.hand_landmarks:
