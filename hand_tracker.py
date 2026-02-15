@@ -20,7 +20,6 @@ class HandTracker:
         self.tip_ids = [4, 8, 12, 16, 20]
 
     def find_hands(self, img, draw=True):
-
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img)
         self.results = self.detector.detect(mp_image)
 
@@ -28,22 +27,24 @@ class HandTracker:
             for hand_landmarks in self.results.hand_landmarks:
                 h, w, _ = img.shape
                 
-                for lm in hand_landmarks:
-                    cx, cy = int(lm.x * w), int(lm.y * h)
-                    cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
-                
+                # Draw skeleton
                 connections = [
                     (0, 1), (1, 2), (2, 3), (3, 4), # Thumb
                     (0, 5), (5, 6), (6, 7), (7, 8), # Index
-                    (0, 9), (9, 10), (10, 11), (11, 12), # Middle
-                    (0, 13), (13, 14), (14, 15), (15, 16), # Ring
-                    (0, 17), (17, 18), (18, 19), (19, 20), # Pinky
-                    (5, 9), (9, 13), (13, 17) # Palm
+                    (5, 9), (9, 10), (10, 11), (11, 12), # Middle
+                    (9, 13), (13, 14), (14, 15), (15, 16), # Ring
+                    (13, 17), (17, 18), (18, 19), (19, 20), # Pinky
+                    (0, 5), (0, 17), (5, 17) # Palm
                 ]
                 for start, end in connections:
                     p1 = (int(hand_landmarks[start].x * w), int(hand_landmarks[start].y * h))
                     p2 = (int(hand_landmarks[end].x * w), int(hand_landmarks[end].y * h))
-                    cv2.line(img, p1, p2, (255, 0, 255), 2)
+                    cv2.line(img, p1, p2, (0, 255, 0), 2)
+                
+                # Draw points
+                for lm in hand_landmarks:
+                    cx, cy = int(lm.x * w), int(lm.y * h)
+                    cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
         return img
 
     def find_position(self, img, hand_no=0, draw=True):
@@ -64,13 +65,13 @@ class HandTracker:
         if not self.lm_list:
             return [0, 0, 0, 0, 0]
             
-        # Thumb
-        if self.lm_list[self.tip_ids[0]][1] > self.lm_list[self.tip_ids[0] - 1][1]:
+        # Thumb: Threshold-based check for open thumb
+        if self.lm_list[4][1] > self.lm_list[4-1][1] + 5:
             fingers.append(1)
         else:
             fingers.append(0)
 
-        # Fingers
+        # Fingers: Check tip relative to middle joint
         for id in range(1, 5):
             if self.lm_list[self.tip_ids[id]][2] < self.lm_list[self.tip_ids[id] - 2][2]:
                 fingers.append(1)
