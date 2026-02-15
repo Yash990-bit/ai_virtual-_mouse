@@ -25,7 +25,8 @@ class MouseController:
         self.cloc_y = self.ploc_y + (y_mapped - self.ploc_y) / self.smoothing
         
        
-        pyautogui.moveTo(self.screen_width - self.cloc_x, self.cloc_y)
+        # Since we flip the image in main.py, x_mapped 0 is already screen left
+        pyautogui.moveTo(self.cloc_x, self.cloc_y)
         self.ploc_x, self.ploc_y = self.cloc_x, self.cloc_y
 
     def click(self, button='left'):
