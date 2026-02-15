@@ -171,6 +171,18 @@ def main():
         cv2.rectangle(img, (0, 0), (200, 80), (0, 0, 0), cv2.FILLED)
         cv2.putText(img, f"FPS: {int(fps)} | M-HAND: {len(hands_data)}", (10, 25), cv2.FONT_HERSHEY_PLAIN, 1.2, (0, 255, 0), 2)
         cv2.putText(img, f"CPU: {stats['cpu']}% RAM: {stats['memory']}MB", (10, 55), cv2.FONT_HERSHEY_PLAIN, 1.2, (0, 255, 0), 2)
+        
+        # --- FINGER STATUS DISPLAY (T I M R P) ---
+        for i, data in enumerate(hands_data):
+            fingers = data['fingers']
+            labels = ['T', 'I', 'M', 'R', 'P']
+            # Position at bottom: Hand 1 on left, Hand 2 on right
+            x_start = 20 + (i * 200)
+            y_pos = V_HEIGHT - 20
+            cv2.putText(img, f"H{i+1}:", (x_start, y_pos), cv2.FONT_HERSHEY_PLAIN, 1.2, (255, 255, 255), 2)
+            for j, status in enumerate(fingers):
+                color = (0, 255, 0) if status == 1 else (0, 0, 255) # Green if Up, Red if Down
+                cv2.putText(img, labels[j], (x_start + 45 + j * 25, y_pos), cv2.FONT_HERSHEY_PLAIN, 1.2, color, 2)
 
         cv2.imshow("AI Virtual Mouse Feed", img)
         if cv2.waitKey(1) & 0xFF == ord('q'): break
