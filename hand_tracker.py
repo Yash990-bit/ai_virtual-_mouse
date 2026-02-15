@@ -5,7 +5,7 @@ from mediapipe.tasks.python import vision
 import numpy as np
 
 class HandTracker:
-    def __init__(self, model_path='hand_landmarker.task', max_hands=1, detection_con=0.5, track_con=0.5):
+    def __init__(self, model_path='hand_landmarker.task', max_hands=2, detection_con=0.5, track_con=0.5):
         base_options = python.BaseOptions(model_asset_path=model_path)
         options = vision.HandLandmarkerOptions(
             base_options=base_options,
@@ -16,7 +16,7 @@ class HandTracker:
         )
         self.detector = vision.HandLandmarker.create_from_options(options)
         self.results = None
-        self.lm_list = []
+        self.lm_list = [] # List of lists (for each hand)
         self.tip_ids = [4, 8, 12, 16, 20]
 
     def find_hands(self, img, draw=True):
@@ -48,32 +48,35 @@ class HandTracker:
         return img
 
     def find_position(self, img, hand_no=0, draw=True):
-        self.lm_list = []
+        lm_list = []
         if self.results and self.results.hand_landmarks:
             if len(self.results.hand_landmarks) > hand_no:
                 hand_landmarks = self.results.hand_landmarks[hand_no]
                 h, w, _ = img.shape
                 for id, lm in enumerate(hand_landmarks):
                     cx, cy = int(lm.x * w), int(lm.y * h)
-                    self.lm_list.append([id, cx, cy])
+                    lm_list.append([id, cx, cy])
                     if draw:
                         cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
-        return self.lm_list
+        return lm_list
 
-    def fingers_up(self):
+    def fingers_up(self, lm_list):
         fingers = []
-        if not self.lm_list:
+        if not lm_list:
             return [0, 0, 0, 0, 0]
             
         # Thumb: Threshold-based check for open thumb
-        if self.lm_list[4][1] > self.lm_list[4-1][1] + 5:
+        # For multiple hands, we might need more logic but let's keep it simple for now
+        # Check if thumb tip is to the right/left of joint depending on which hand
+        # Simplest: distance check or horizontal check relative to index base
+        if lm_list[4][1] > lm_list[4-1][1] + 5: # Assuming right hand/mirrored index
             fingers.append(1)
         else:
             fingers.append(0)
 
         # Fingers: Check tip relative to middle joint
         for id in range(1, 5):
-            if self.lm_list[self.tip_ids[id]][2] < self.lm_list[self.tip_ids[id] - 2][2]:
+            if lm_list[self.tip_ids[id]][2] < lm_list[self.tip_ids[id] - 2][2]:
                 fingers.append(1)
             else:
                 fingers.append(0)

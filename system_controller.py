@@ -13,6 +13,44 @@ class SystemController:
         except Exception as e:
             print(f"Volume Control Error: {e}")
 
+    def media_control(self, action):
+        """
+        action: 'play_pause', 'mute'
+        """
+        try:
+            if action == 'play_pause':
+                pyautogui.press('space')
+            elif action == 'mute':
+                pyautogui.press('mute') # This might vary by system/app, but 'mute' is standard for OS
+                # Alternatively for YouTube:
+                # pyautogui.press('m')
+        except Exception as e:
+            print(f"Media Control Error: {e}")
+
+    def zoom_control(self, direction):
+        """
+        direction: 'in', 'out'
+        """
+        try:
+            if direction == 'in':
+                pyautogui.hotkey('command', '+')
+            else:
+                pyautogui.hotkey('command', '-')
+        except Exception as e:
+            print(f"Zoom Error: {e}")
+
+    def rotate_control(self, direction):
+        """
+        direction: 'left', 'right'
+        """
+        try:
+            if direction == 'left':
+                pyautogui.hotkey('command', 'l') # Common shortcut for rotate left
+            else:
+                pyautogui.hotkey('command', 'r') # Common shortcut for rotate right
+        except Exception as e:
+            print(f"Rotate Error: {e}")
+
     def take_screenshot(self):
         try:
             timestamp = time.strftime("%Y%m%d-%H%M%S")
@@ -22,22 +60,17 @@ class SystemController:
         except Exception as e:
             print(f"❌ Screenshot Error: {e}")
 
-    # NEW: Browser Navigation
     def browser_nav(self, direction):
         try:
             if direction == "back":
-                # Command + Left Arrow for Back
                 pyautogui.hotkey('command', 'left')
             else:
-                # Command + Right Arrow for Forward
                 pyautogui.hotkey('command', 'right')
         except Exception as e:
             print(f"Browser Nav Error: {e}")
 
-    # NEW: App Switcher
     def app_switcher(self):
         try:
-            # Command + Tab
             pyautogui.hotkey('command', 'tab')
         except Exception as e:
             print(f"App Switcher Error: {e}")
