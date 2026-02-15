@@ -73,7 +73,7 @@ class HandTracker:
         else:
             fingers.append(0)
 
-        # Fingers: Check tip relative to middle joint
+    
         for id in range(1, 5):
             if target_lm_list[self.tip_ids[id]][2] < target_lm_list[self.tip_ids[id] - 2][2]:
                 fingers.append(1)
