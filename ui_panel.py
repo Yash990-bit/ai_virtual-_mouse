@@ -9,29 +9,23 @@ class GesterUI(ctk.CTk):
         self.title("AI Virtual Mouse Settings")
         self.geometry("400x500")
         
-        # Set dark appearance
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
-        
-        # UI Elements
         self.label = ctk.CTkLabel(self, text="Mouse Settings", font=("Roboto", 24, "bold"))
         self.label.pack(pady=20)
         
-        # Smoothing Slider
         self.smoothing_label = ctk.CTkLabel(self, text="Smoothing (Lower = Faster)")
         self.smoothing_label.pack(pady=5)
         self.smoothing_slider = ctk.CTkSlider(self, from_=1, to=15, command=self.update_settings)
         self.smoothing_slider.set(7)
         self.smoothing_slider.pack(pady=10)
         
-        # Detection Confidence Slider
         self.det_label = ctk.CTkLabel(self, text="Detection Confidence")
         self.det_label.pack(pady=5)
         self.det_slider = ctk.CTkSlider(self, from_=0.1, to=1.0, command=self.update_settings)
         self.det_slider.set(0.8)
         self.det_slider.pack(pady=10)
         
-        # Gesture Info
         self.info_box = ctk.CTkTextbox(self, width=350, height=150)
         self.info_box.pack(pady=20)
         self.info_box.insert("0.0", "Gestures Guide:\n\n"
