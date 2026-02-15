@@ -8,11 +8,9 @@ from system_controller import SystemController
 from performance_monitor import PerformanceMonitor
 
 def main():
-    # --- Config ---
     V_WIDTH, V_HEIGHT = 640, 480
     FRAME_MARGIN = 100
     
-    # --- Init ---
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("❌ CAMERA ERROR: Could not access webcam.")
