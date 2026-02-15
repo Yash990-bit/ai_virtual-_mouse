@@ -3,7 +3,7 @@ import numpy as np
 from screeninfo import get_monitors
 
 class MouseController:
-    def __init__(self, smoothing=5):
+    def __init__(self, smoothing=4):
         self.smoothing = smoothing
         self.ploc_x, self.ploc_y = 0, 0
         self.cloc_x, self.cloc_y = 0, 0
@@ -12,15 +12,17 @@ class MouseController:
         self.screen_width = monitor.width
         self.screen_height = monitor.height
         
-
+   
+        pyautogui.PAUSE = 0
+        pyautogui.MINIMUM_DURATION = 0
+        pyautogui.MINIMUM_SLEEP = 0
         pyautogui.FAILSAFE = False
 
     def move_cursor(self, x, y, frame_w, frame_h, margin=100):
         x_mapped = np.interp(x, (margin, frame_w - margin), (0, self.screen_width))
         y_mapped = np.interp(y, (margin, frame_h - margin), (0, self.screen_height))
         
-        # Adaptive Smoothing: If movement is large, reduce smoothing for speed.
-        # If movement is small, increase smoothing for precision.
+
         dist = np.hypot(x_mapped - self.ploc_x, y_mapped - self.ploc_y)
         dynamic_smoothing = self.smoothing
         if dist < 10:

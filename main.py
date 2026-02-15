@@ -21,7 +21,7 @@ def main():
     cap.set(4, V_HEIGHT)
     
     tracker = HandTracker(max_hands=2, detection_con=0.4)
-    mouse = MouseController(smoothing=7)
+    mouse = MouseController(smoothing=4)
     sys_ctrl = SystemController()
     perf_mon = PerformanceMonitor()
     
@@ -117,13 +117,11 @@ def main():
                 elif fingers[1] == 1 and fingers[2] == 1 and np.hypot(x2-x1, y2-y1) < 45:
                     mouse.click()
                     cv2.putText(img, "LEFT CLICK", (x1, y1-20), cv2.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 3)
-                    time.sleep(0.1)
                 
                 # 3. Right Click (3 Fingers UP)
                 elif fingers[1] == 1 and fingers[2] == 1 and fingers[3] == 1:
                     mouse.right_click()
                     cv2.putText(img, "RIGHT CLICK", (x1, y1-20), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 3)
-                    time.sleep(0.1)
 
         elif len(hands_data) == 2:
             # --- TWO HAND GESTURES: ZOOM & ROTATE ---

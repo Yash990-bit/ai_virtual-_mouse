@@ -21,8 +21,9 @@ class HandTracker:
         self.lm_list = []
         self.tip_ids = [4, 8, 12, 16, 20]
 
-        self.lm_history = [deque(maxlen=3) for _ in range(21)] 
+        self.lm_history = [deque(maxlen=5) for _ in range(21)] 
         self.finger_history = deque(maxlen=5) 
+        self.jitter_threshold = 2 # Pixels
 
     def find_hands(self, img, draw=True, timestamp_ms=0):
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img)
@@ -68,9 +69,16 @@ class HandTracker:
                     # Weighted Moving Average (more weight to recent)
                     history_len = len(self.lm_history[id])
                     if history_len > 1:
-                        avg_x = sum(p[0] * (i + 1) for i, p in enumerate(self.lm_history[id])) / sum(range(1, history_len + 1))
-                        avg_y = sum(p[1] * (i + 1) for i, p in enumerate(self.lm_history[id])) / sum(range(1, history_len + 1))
-                        cx, cy = int(avg_x), int(avg_y)
+                        weights = np.linspace(0.5, 1.0, history_len)
+                        avg_x = sum(p[0] * weights[i] for i, p in enumerate(self.lm_history[id])) / sum(weights)
+                        avg_y = sum(p[1] * weights[i] for i, p in enumerate(self.lm_history[id])) / sum(weights)
+                        
+                        # Only update if movement is above jitter threshold
+                        if abs(avg_x - self.lm_history[id][-2][0]) > self.jitter_threshold or \
+                           abs(avg_y - self.lm_history[id][-2][1]) > self.jitter_threshold:
+                            cx, cy = int(avg_x), int(avg_y)
+                        else:
+                            cx, cy = self.lm_history[id][-2]
                     
                     self.lm_list.append([id, cx, cy])
                     if draw:
