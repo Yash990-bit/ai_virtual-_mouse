@@ -29,6 +29,9 @@ def main():
     canvas = np.zeros((V_HEIGHT, V_WIDTH, 3), np.uint8)
     draw_mode = False
     prev_draw_x, prev_draw_y = 0, 0
+    draw_color = (0, 255, 0) # Default Green
+    brush_thickness = 5
+    eraser_thickness = 50
     swipe_cooldown = 0
     volume_cooldown = 0
     
@@ -102,15 +105,45 @@ def main():
 
       
             if draw_mode:
+                # 1. Header Rendering (Colors & Tools)
+                cv2.rectangle(img, (0, 0), (100, 70), (255, 0, 0), cv2.FILLED) # Blue
+                cv2.rectangle(img, (100, 0), (200, 70), (0, 255, 0), cv2.FILLED) # Green
+                cv2.rectangle(img, (200, 0), (300, 70), (0, 0, 255), cv2.FILLED) # Red
+                cv2.rectangle(img, (300, 0), (450, 70), (200, 200, 200), cv2.FILLED) # Eraser
+                cv2.putText(img, "ERASER", (320, 45), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 0), 3)
+                cv2.rectangle(img, (450, 0), (640, 70), (50, 50, 50), cv2.FILLED) # Clear
+                cv2.putText(img, "CLEAR", (480, 45), cv2.FONT_HERSHEY_PLAIN, 2, (255, 255, 255), 3)
+
+                # Visual Indicator for Selected Color
+                if draw_color == (255, 0, 0): cv2.rectangle(img, (0,0), (100, 70), (255,255,255), 5)
+                elif draw_color == (0, 255, 0): cv2.rectangle(img, (100,0), (200, 70), (255,255,255), 5)
+                elif draw_color == (0, 0, 255): cv2.rectangle(img, (200,0), (300, 70), (255,255,255), 5)
+                elif draw_color == (0, 0, 0): cv2.rectangle(img, (300,0), (450, 70), (0,255,0), 5)
+
                 if fingers[1] == 1:
-                    if prev_draw_x == 0: prev_draw_x, prev_draw_y = x1, y1
-                    cv2.line(canvas, (prev_draw_x, prev_draw_y), (x1, y1), (0, 255, 0), 5)
-                    prev_draw_x, prev_draw_y = x1, y1
-                else: prev_draw_x, prev_draw_y = 0, 0
-                
-                # Cleanup: Thumb + Index pinch while in draw mode?
-                if fingers[0] == 1 and fingers[1] == 1 and np.hypot(lm[4][1]-lm[8][1], lm[4][2]-lm[8][2]) < 30:
-                     canvas = np.zeros((V_HEIGHT, V_WIDTH, 3), np.uint8)
+                    # Header Interaction Logic
+                    if y1 < 70:
+                        if 0 < x1 < 100:
+                            draw_color = (255, 0, 0)
+                        elif 100 < x1 < 200:
+                            draw_color = (0, 255, 0)
+                        elif 200 < x1 < 300:
+                            draw_color = (0, 0, 255)
+                        elif 300 < x1 < 450:
+                            draw_color = (0, 0, 0) # Eraser Mode
+                        elif 450 < x1 < 640:
+                            canvas = np.zeros((V_HEIGHT, V_WIDTH, 3), np.uint8) # Clear All
+                    
+                    # Drawing Logic
+                    else:
+                        if prev_draw_x == 0: prev_draw_x, prev_draw_y = x1, y1
+                        thickness = brush_thickness if draw_color != (0, 0, 0) else eraser_thickness
+                        cv2.line(canvas, (prev_draw_x, prev_draw_y), (x1, y1), draw_color, thickness)
+                        prev_draw_x, prev_draw_y = x1, y1
+                        # Visual cursor on main image
+                        cv2.circle(img, (x1, y1), thickness//2, draw_color, cv2.FILLED)
+                else: 
+                    prev_draw_x, prev_draw_y = 0, 0
             else:
                 # 1. Cursor Movement
                 if fingers[1] == 1 and fingers[2] == 0:
