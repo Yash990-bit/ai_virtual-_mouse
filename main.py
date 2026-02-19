@@ -61,7 +61,7 @@ def main():
         if tracker.results and tracker.results.hand_landmarks:
             for i in range(len(tracker.results.hand_landmarks)):
                 lm_list = tracker.find_position(img, hand_no=i, draw=False)
-                fingers = tracker.fingers_up(lm_list)
+                fingers = tracker.fingers_up(lm_list, hand_no=i)
                 hands_data.append({'lm': lm_list, 'fingers': fingers})
 
 

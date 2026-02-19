@@ -18,11 +18,12 @@ class HandTracker:
         )
         self.detector = vision.HandLandmarker.create_from_options(options)
         self.results = None
-        self.lm_list = []
         self.tip_ids = [4, 8, 12, 16, 20]
+        self.max_hands = max_hands
 
-        self.lm_history = [deque(maxlen=5) for _ in range(21)] 
-        self.finger_history = deque(maxlen=5) 
+        # Pre-allocate histories for max_hands
+        self.lm_histories = [[deque(maxlen=5) for _ in range(21)] for _ in range(max_hands)]
+        self.finger_histories = [deque(maxlen=5) for _ in range(max_hands)]
         self.jitter_threshold = 2 # Pixels
 
     def find_hands(self, img, draw=True, timestamp_ms=0):
@@ -32,8 +33,6 @@ class HandTracker:
         if draw and self.results.hand_landmarks:
             for hand_landmarks in self.results.hand_landmarks:
                 h, w, _ = img.shape
-                
-             
                 connections = [
                     (0, 1), (1, 2), (2, 3), (3, 4), # Thumb
                     (0, 5), (5, 6), (6, 7), (7, 8), # Index
@@ -47,70 +46,71 @@ class HandTracker:
                     p2 = (int(hand_landmarks[end].x * w), int(hand_landmarks[end].y * h))
                     cv2.line(img, p1, p2, (0, 255, 0), 2)
                 
-           
                 for lm in hand_landmarks:
                     cx, cy = int(lm.x * w), int(lm.y * h)
                     cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
         return img
 
     def find_position(self, img, hand_no=0, draw=True):
-        self.lm_list = []
+        lm_list = []
         if self.results and self.results.hand_landmarks:
             if hand_no < len(self.results.hand_landmarks):
                 my_hand = self.results.hand_landmarks[hand_no]
                 h, w, c = img.shape
+                
+                # Get history for this specific hand
+                current_lm_history = self.lm_histories[hand_no]
+                
                 for id, lm in enumerate(my_hand):
                     # Raw pixel coordinates
                     cx, cy = int(lm.x * w), int(lm.y * h)
                     
-                    # Temporal Smoothing (Landmark History)
-                    self.lm_history[id].append((cx, cy))
+                    # Temporal Smoothing
+                    current_lm_history[id].append((cx, cy))
                     
-                    # Weighted Moving Average (more weight to recent)
-                    history_len = len(self.lm_history[id])
+                    # Weighted Moving Average
+                    history_len = len(current_lm_history[id])
                     if history_len > 1:
                         weights = np.linspace(0.5, 1.0, history_len)
-                        avg_x = sum(p[0] * weights[i] for i, p in enumerate(self.lm_history[id])) / sum(weights)
-                        avg_y = sum(p[1] * weights[i] for i, p in enumerate(self.lm_history[id])) / sum(weights)
+                        avg_x = sum(p[0] * weights[i] for i, p in enumerate(current_lm_history[id])) / sum(weights)
+                        avg_y = sum(p[1] * weights[i] for i, p in enumerate(current_lm_history[id])) / sum(weights)
                         
-                        # Only update if movement is above jitter threshold
-                        if abs(avg_x - self.lm_history[id][-2][0]) > self.jitter_threshold or \
-                           abs(avg_y - self.lm_history[id][-2][1]) > self.jitter_threshold:
+                        if abs(avg_x - current_lm_history[id][-2][0]) > self.jitter_threshold or \
+                           abs(avg_y - current_lm_history[id][-2][1]) > self.jitter_threshold:
                             cx, cy = int(avg_x), int(avg_y)
                         else:
-                            cx, cy = self.lm_history[id][-2]
+                            cx, cy = current_lm_history[id][-2]
                     
-                    self.lm_list.append([id, cx, cy])
+                    lm_list.append([id, cx, cy])
                     if draw:
                         cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
-        return self.lm_list
+        return lm_list
 
-    def fingers_up(self, lm_list=None):
-        raw_fingers = []
-        target_lm_list = lm_list if lm_list is not None else self.lm_list
-        
-        if not target_lm_list:
+    def fingers_up(self, lm_list, hand_no=0):
+        if not lm_list:
             return [0, 0, 0, 0, 0]
             
-
-        if target_lm_list[4][1] > target_lm_list[4-1][1] + 5:
+        raw_fingers = []
+        # Thumb: depends on which hand it is (left/right) - simple check for now
+        if lm_list[4][1] > lm_list[3][1] + 5:
             raw_fingers.append(1)
         else:
             raw_fingers.append(0)
 
-     
+        # 4 Fingers
         for id in range(1, 5):
-            if target_lm_list[self.tip_ids[id]][2] < target_lm_list[self.tip_ids[id] - 2][2]:
+            if lm_list[self.tip_ids[id]][2] < lm_list[self.tip_ids[id] - 2][2]:
                 raw_fingers.append(1)
             else:
                 raw_fingers.append(0)
         
-        self.finger_history.append(tuple(raw_fingers))
-        
-
-        if len(self.finger_history) > 0:
+        # Stability check for this specific hand
+        if hand_no < len(self.finger_histories):
+            history = self.finger_histories[hand_no]
+            history.append(tuple(raw_fingers))
+            
             gesture_counts = {}
-            for g in self.finger_history:
+            for g in history:
                 gesture_counts[g] = gesture_counts.get(g, 0) + 1
             stable_fingers = max(gesture_counts, key=gesture_counts.get)
             return list(stable_fingers)
